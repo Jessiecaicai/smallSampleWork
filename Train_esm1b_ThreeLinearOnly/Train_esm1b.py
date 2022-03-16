@@ -2,7 +2,7 @@ from pandas.tests.tools.test_to_datetime import epochs
 from scipy.io.arff.tests.test_arffread import data_path
 import os
 #os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"
-os.environ['CUDA_VISIBLE_DEVICES'] = '0, 1, 2, 3'
+os.environ['CUDA_VISIBLE_DEVICES'] = '4, 5, 6, 7'
 import esm
 import esmz
 import torch.nn as nn
@@ -51,7 +51,7 @@ if __name__ == '__main__':
 
     ### 初始化参数
     epochs = 20000
-    batch_size = 48
+    batch_size = 52
     learning_rate =5e-5
     Seed = 2022
     init_seeds(SEED=Seed)
@@ -64,7 +64,7 @@ if __name__ == '__main__':
     train_loader = DataLoader(dataset=train_dataset, batch_size=batch_size, shuffle=True,
                               drop_last=True,
                               collate_fn=train_dataset.collate_fn,
-                              num_workers=8)
+                              num_workers=4)
 
     ### 加载原esm1b模型参数 33层
     ### 随机初始化参数
@@ -107,9 +107,9 @@ if __name__ == '__main__':
 
             mask_idex = []
             mask_item = []
-            for i, index in enumerate(all_label_ids.contiguous().view(-1)):
+            for j, index in enumerate(all_label_ids.contiguous().view(-1)):
                 if index != -1:
-                    mask_idex.append(i)
+                    mask_idex.append(j)
                     mask_item.append(index)
             pre_atom = logits.contiguous().view(-1, len(esm1b_alphabetAfter.all_toks))[mask_idex]
             acc = compute_accuracy(pre_atom.cpu(), torch.tensor(mask_item).cpu())
@@ -129,7 +129,7 @@ if __name__ == '__main__':
                 training_loss /= training_step_out
                 training_acc /= training_step_out
                 print("Epoch: {}. \t Step: {} / {} finish. \t TrainingLoss: {} \t TrainingAcc: {}".format(epoch_item, training_step, len(train_loader), training_loss, training_acc))
-                loss_txt = open("./loss/loss2022_0310_loss.txt", 'a')
+                loss_txt = open("./loss/loss2022_0311_loss.txt", 'a')
                 loss_txt.write("Epoch: {}. \t Step: {} / {} finish. \t TrainingLoss: {}  \t TrainingAcc: {} \n".format(epoch_item, training_step, len(train_loader), training_loss, training_acc))
                 training_loss = 0
                 training_step_out = 0
@@ -138,6 +138,9 @@ if __name__ == '__main__':
 
             if i % 10000 == 0:                         # 迭代10000次保存一次模型
                 model_path = os.path.join("./", "model_" + str(epoch_item) + "_" + str(i) + ".pkl")
+                # model_path = f"/root/SmallSampleWork/Train_esm1b_TestModelSave/model/model_{epoch_item}_{str(i)}.pkl"
+                # test_model_path = open(f"/root/SmallSampleWork/Train_esm1b_TestModelSave/model/model_{epoch_item}_{str(i)}.txt", 'a')
+                # test_model_path.write("ss")
                 torch.save(model.state_dict(), model_path)
 
 
