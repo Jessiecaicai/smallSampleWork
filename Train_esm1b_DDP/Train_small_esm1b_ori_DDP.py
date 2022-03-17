@@ -2,7 +2,7 @@ from pandas.tests.tools.test_to_datetime import epochs
 from scipy.io.arff.tests.test_arffread import data_path
 import os
 #os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"
-os.environ['CUDA_VISIBLE_DEVICES'] = '4, 5, 6, 7'
+os.environ['CUDA_VISIBLE_DEVICES'] = '0, 1, 2, 3'
 import esm
 import esmz
 import torch
@@ -68,7 +68,7 @@ if __name__ == '__main__':
 
     ### 初始化参数
     epochs = 20000
-    batch_size = 12
+    batch_size = 300
     learning_rate =5e-5
     Seed = 2022
     init_seeds(SEED=Seed)
@@ -87,12 +87,12 @@ if __name__ == '__main__':
 
     ### 加载原esm1b模型参数 33层
     ### 随机初始化参数
-    # args = param_esm1b.params_parser()
-    # esm1b_alphabetAfter = esm.data.Alphabet.from_architecture(args.arch)
+    args = param_esm1b.params_parser()
+    esm1b_alphabetAfter = esm.data.Alphabet.from_architecture(args.arch)
     # model = esmz.model.ProteinBertModel(args, esm1b_alphabetAfter)
 
-    # model = esm.model.ProteinBertModel(args, esm1b_alphabetAfter)
-    model, alphabet = esm.pretrained.load_model_and_alphabet("/research/wzy/esm1b/esm1b_t33_650M_UR50S.pt")
+    model = esm.model.ProteinBertModel(args, esm1b_alphabetAfter)
+    # model, alphabet = esm.pretrained.load_model_and_alphabet("/research/wzy/esm1b/esm1b_t33_650M_UR50S.pt")
     # esm1b, alphabet = esm.pretrained.esm1b_t33_650M_UR50S()
     # state_dict = torch.load(model)
     # state_esm1b = state_dict['model_state_dict']
@@ -101,8 +101,8 @@ if __name__ == '__main__':
 
     # device_ids = [0, 1]
     # model = DataParallel(model)
-    Total = get_parameter_number(model)["Total"]
-    Trainable = get_parameter_number(model)["Trainable"]
+    Total, Trainable = get_parameter_number(model)
+    print(f"Total:{Total}, Trainable:{Trainable}")
     model = model.to(device)
     criterion = nn.CrossEntropyLoss(ignore_index=-1)
 
@@ -130,7 +130,7 @@ if __name__ == '__main__':
             results = model(tokens, return_contacts=False)
             logits = results["logits"].cuda()
 
-            loss = criterion(logits.contiguous().view(-1, len(alphabet.all_toks)),
+            loss = criterion(logits.contiguous().view(-1, len(esm1b_alphabetAfter.all_toks)),
                              all_label_ids.contiguous().view(-1))
 
             mask_idex = []
@@ -139,7 +139,7 @@ if __name__ == '__main__':
                 if index != -1:
                     mask_idex.append(j)
                     mask_item.append(index)
-            pre_atom = logits.contiguous().view(-1, len(alphabet.all_toks))[mask_idex]
+            pre_atom = logits.contiguous().view(-1, len(esm1b_alphabetAfter.all_toks))[mask_idex]
             acc = compute_accuracy(pre_atom.cpu(), torch.tensor(mask_item).cpu())
             # print(f"acc:{acc}")
             training_acc += acc
@@ -166,14 +166,14 @@ if __name__ == '__main__':
                                                                                                             len(train_loader),
                                                                                                             training_loss,
                                                                                                             training_acc))
-                    loss_txt = open("./loss/loss2022_0316_loss.txt", 'a')
+                    loss_txt = open("./loss/loss2022_0317_loss.txt", 'a')
                     loss_txt.write("Epoch: {}. \t Step: {} / {} finish. \t TrainingLoss: {}  \t TrainingAcc: {} \n".format(epoch_item, training_step, len(train_loader), training_loss, training_acc))
                 training_loss = 0
                 training_step_out = 0
                 training_acc = 0
 
 
-            if i % 10000 == 0:                         # 迭代10000次保存一次模型
+            if i % 2000 == 0:                         # 迭代10000次保存一次模型
                 if torch.distributed.get_rank() == 0:   # 在第一台机器的第一张卡上保存模型
-                    model_path = os.path.join("./", "316model_" + str(epoch_item) + "_" + str(i) + ".pkl")
+                    model_path = os.path.join("./", "317model_" + str(epoch_item) + "_" + str(i) + ".pkl")
                     torch.save(model.state_dict(), model_path)

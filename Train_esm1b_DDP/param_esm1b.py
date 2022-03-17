@@ -143,7 +143,7 @@ import argparse
 def params_parser():
     parser = argparse.ArgumentParser(description="ESM-1b pretraining hyper-parameters")
     parser.add_argument(
-        "--layers", default=12, type=int, metavar="N", help="number of layers"
+        "--layers", default=6, type=int, metavar="N", help="number of layers"
     )
     parser.add_argument(
         "--embed_dim", default=768, type=int, metavar="N", help="embedding dimension"
@@ -153,7 +153,7 @@ def params_parser():
     )
     parser.add_argument(
         "--ffn_embed_dim",
-        default=2560,
+        default=3072,
         type=int,
         metavar="N",
         help="embedding dimension for FFN",
@@ -166,7 +166,7 @@ def params_parser():
     )
     parser.add_argument(
         "--attention_heads",
-        default=16,
+        default=12,
         type=int,
         metavar="N",
         help="number of attention heads",
