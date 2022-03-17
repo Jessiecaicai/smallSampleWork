@@ -131,7 +131,7 @@ class ProteinBertModel(nn.Module):
             mask_ratio_train = 0.15 * 0.8
             src_lengths = (~padding_mask).sum(-1)
             mask_ratio_observed = (tokens == self.mask_idx).sum(-1).float() / src_lengths
-            x = x * (1 - mask_ratio_train) / (1 - mask_ratio_observed)[:, None, None]
+            x = x * (1 - mask_ratio_train) / ((1 - mask_ratio_observed)[:, None, None]).type_as(x)
 
         x = x + self.embed_positions(tokens)
 

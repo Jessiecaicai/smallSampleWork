@@ -10,9 +10,9 @@ import torch
 import param_esm1b
 import torch.distributed
 import numpy as np
-# from apex.parallel import convert_syncbn_model
-# from apex.parallel import DistributedDataParallel
-# from apex import amp
+from apex.parallel import convert_syncbn_model
+from apex.parallel import DistributedDataParallel
+from apex import amp
 from torch.utils.data.dataloader import DataLoader
 from torch.utils.data.distributed import DistributedSampler
 from torch.nn import DataParallel
@@ -20,8 +20,13 @@ import loadingData
 import torch.nn as nn
 import pytest
 
+### 计算模型参数量
+def get_parameter_number(model):
+    total_num = sum(p.numel() for p in model.parameters())
+    trainable_num = sum(p.numel() for p in model.parameters() if p.requires_grad)
+    return {'Total': total_num, 'Trainable': trainable_num}
 
-
+### 得到mask的ACC
 def compute_accuracy(pred, target):
     #return float(torch.sum(torch.max(pred.detach(), dim=1)[1] == target).cpu().item()) / len(pred)
     return float(torch.sum(torch.max(pred.detach(), dim=1)[1] == target).item()) / len(pred)
@@ -82,8 +87,8 @@ if __name__ == '__main__':
 
     ### 加载原esm1b模型参数 33层
     ### 随机初始化参数
-    args = param_esm1b.params_parser()
-    esm1b_alphabetAfter = esm.data.Alphabet.from_architecture(args.arch)
+    # args = param_esm1b.params_parser()
+    # esm1b_alphabetAfter = esm.data.Alphabet.from_architecture(args.arch)
     # model = esmz.model.ProteinBertModel(args, esm1b_alphabetAfter)
 
     # model = esm.model.ProteinBertModel(args, esm1b_alphabetAfter)
@@ -101,12 +106,14 @@ if __name__ == '__main__':
     criterion = nn.CrossEntropyLoss(ignore_index=-1)
 
     # 在使用nn.DistributedDataParallel时，用nn.SyncBatchNorm替换或包装nn.BatchNorm层。
-    # model = convert_syncbn_model(model)
+    model = convert_syncbn_model(model)
     optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)
-    # model, optimizer = amp.initialize(model, optimizer, opt_level='O2')
+    model, optimizer = amp.initialize(model, optimizer, opt_level='O2')
 
     model = torch.nn.parallel.DistributedDataParallel(model, device_ids=[local_rank],
                                                       output_device=local_rank, find_unused_parameters=True)
+    model.to(device)
+
     model.train()
     for epoch_item in range(epochs):
         train_loader.sampler.set_epoch(epoch_item)
@@ -141,9 +148,9 @@ if __name__ == '__main__':
             training_step_out += 1
 
             optimizer.zero_grad()
-            # with amp.scale_loss(loss,optimizer) as scaled_loss:
-            #     scaled_loss.backward()
-            loss.backward()
+            with amp.scale_loss(loss,optimizer) as scaled_loss:
+                scaled_loss.backward()
+            # loss.backward()
             optimizer.step()
 
             if training_step_out % 100 == 0:

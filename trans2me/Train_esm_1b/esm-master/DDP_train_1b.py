@@ -80,7 +80,7 @@ if __name__ == '__main__':
 
     model = convert_syncbn_model(model)         # 在使用nn.DistributedDataParallel时，用nn.SyncBatchNorm替换或包装nn.BatchNorm层。
     optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)
-    model, optimizer = amp.initialize(model, optimizer, opt_level='O2')
+    model, optimizer = amp.initialize(model, optimizer, opt_level='O1')
 
     model = torch.nn.parallel.DistributedDataParallel(model, device_ids=[args.local_rank], output_device=args.local_rank, find_unused_parameters=True)
     model.to(device)
